@@ -13,11 +13,7 @@ stages:
   - format
   - clippy
   - test
-  - bin
   - doc
-
-before_script:
-  - rustup component add rustfmt
 
 jobs:
   allow_failures:
@@ -26,6 +22,8 @@ jobs:
   fast_finish: true
   include:
     - stage: format
+      before_script:
+        - rustup component add rustfmt
       script:
         - rustfmt --edition=2018 src/lib.rs --check
         - rustfmt --edition=2018 src/main.rs --check
@@ -46,9 +44,6 @@ jobs:
       script:
         - cargo build --verbose --release
         - cargo test --verbose --release -- --nocapture
-    - stage: bin
-      script:
-        - cargo build --verbose --release --example ftml
     - stage: doc
       script:
         - cargo doc --verbose
