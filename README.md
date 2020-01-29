@@ -8,6 +8,8 @@ See the relevant crate documentation for more information on "Foundation Text Ma
 Currently it does not connect to a [DEEPWELL](https://github.com/Nu-SCPTheme/deepwell) server for
 necessary external information (other pages, users, etc.), but will in the future.
 
+Available under the terms of the GNU Affero General Public License. See [LICENSE.md](LICENSE).
+
 ### Compilation
 This crate targets the latest stable Rust. At time of writing, that is 1.40.0
 
