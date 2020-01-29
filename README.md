@@ -1,5 +1,7 @@
 ## ftml-rpc
 
+[![Build Status](https://travis-ci.org/Nu-SCPTheme/ftml-rpc.svg?branch=master)](https://travis-ci.org/Nu-SCPTheme/ftml-rpc)
+
 An RPC server and client for [ftml](https://github.com/Nu-SCPTheme/ftml) calls.
 See the relevant crate documentation for more information on "Foundation Text Markup Language".
 
