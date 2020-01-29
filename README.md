@@ -8,6 +8,8 @@ See the relevant crate documentation for more information on "Foundation Text Ma
 Currently it does not connect to a [DEEPWELL](https://github.com/Nu-SCPTheme/deepwell) server for
 necessary external information (other pages, users, etc.), but will in the future.
 
+The lint `#![forbid(unsafe_code)]` is set, and therefore this crate has only safe code. However dependencies may have unsafe internals.
+
 Available under the terms of the GNU Affero General Public License. See [LICENSE.md](LICENSE).
 
 ### Compilation
