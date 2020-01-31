@@ -54,22 +54,20 @@ impl Server {
         tcp::listen(&address, Json::default)
             .await?
             // Log requests
-            .filter_map(|conn| {
-                async move {
-                    match conn {
-                        Ok(conn) => {
-                            match conn.peer_addr() {
-                                Ok(addr) => info!("Accepted connection from {}", addr),
-                                Err(error) => warn!("Unable to get peer address: {}", error),
-                            }
-
-                            Some(conn)
+            .filter_map(|conn| async move {
+                match conn {
+                    Ok(conn) => {
+                        match conn.peer_addr() {
+                            Ok(addr) => info!("Accepted connection from {}", addr),
+                            Err(error) => warn!("Unable to get peer address: {}", error),
                         }
-                        Err(error) => {
-                            warn!("Error accepting connection: {}", error);
 
-                            None
-                        }
+                        Some(conn)
+                    }
+                    Err(error) => {
+                        warn!("Error accepting connection: {}", error);
+
+                        None
                     }
                 }
             })
