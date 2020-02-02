@@ -9,37 +9,35 @@ os:
   - osx
   - windows
 
-stages:
-  - format
-  - clippy
-  - test
-  - doc
+before_script:
+  # Download dependency repositories
+  - .travis/download.sh ftml
+  # Add rustfmt
+  - rustup component add rustfmt
+  # Add clippy
+  - .travis/clippy.sh setup
+
+script:
+  # Ensure code is rustfmt'd
+  - .travis/banner.sh rustfmt
+  - rustfmt --edition=2018 src/lib.rs --check
+  - rustfmt --edition=2018 src/main.rs --check
+  # Check clippy lints
+  - .travis/banner.sh clippy
+  - .travis/clippy.sh check
+  # Run build
+  - .travis/banner.sh build
+  - cargo build --verbose --release
+  - cargo test --verbose --release -- --nocapture
+  # Build documentation
+  - .travis/banner.sh docs
+  - cargo doc --verbose --no-deps
 
 jobs:
   allow_failures:
     - rust: nightly
     - os: windows
   fast_finish: true
-  include:
-    - stage: format
-      before_script:
-        - rustup component add rustfmt
-      script:
-        - rustfmt --edition=2018 src/lib.rs --check
-        - rustfmt --edition=2018 src/main.rs --check
-    - stage: clippy
-      before_script:
-        - rustup toolchain install nightly-2020-01-02-x86_64-unknown-linux-gnu
-        - rustup component add clippy --toolchain nightly-2020-01-02-x86_64-unknown-linux-gnu
-      script:
-        - cargo +nightly-2020-01-02 clippy
-    - stage: test
-      script:
-        - cargo build --verbose --release
-        - cargo test --verbose --release -- --nocapture
-    - stage: doc
-      script:
-        - cargo doc --verbose
 
 notifications:
   email:
