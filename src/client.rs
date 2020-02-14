@@ -33,7 +33,7 @@ use tokio::time::timeout;
 use tokio_serde::formats::Json;
 
 macro_rules! retry {
-    ($self:expr, $new_future:tt) => {{
+    ($self:expr, $new_future:expr) => {{
         use io::{Error, ErrorKind};
 
         let mut result = None;
@@ -102,8 +102,7 @@ impl Client {
     pub async fn protocol(&mut self) -> io::Result<String> {
         info!("Method: protocol");
 
-        #[allow(unused_parens)]
-        let version = retry!(self, (self.client.protocol(context::current())));
+        let version = retry!(self, self.client.protocol(context::current()));
 
         if PROTOCOL_VERSION != version {
             warn!(
@@ -118,7 +117,8 @@ impl Client {
     pub async fn ping(&mut self) -> io::Result<()> {
         info!("Method: ping");
 
-        self.client.ping(context::current()).await?;
+        retry!(self, self.client.ping(context::current()));
+
         Ok(())
     }
 
