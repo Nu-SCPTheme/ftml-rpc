@@ -22,7 +22,6 @@ use crate::api::{FtmlClient, PROTOCOL_VERSION};
 use crate::Result;
 use ftml::html::HtmlOutput;
 use ftml::PageInfoOwned;
-use futures::prelude::*;
 use serde_json::Value;
 use std::net::SocketAddr;
 use std::time::Duration;
@@ -32,6 +31,42 @@ use tarpc::rpc::context;
 use tarpc::serde_transport::tcp;
 use tokio::time::timeout;
 use tokio_serde::formats::Json;
+
+macro_rules! retry {
+    ($self:expr, $new_future:tt) => {{
+        use io::{Error, ErrorKind};
+
+        let mut result = None;
+
+        for _ in 0..5 {
+            let fut = $new_future;
+
+            match timeout($self.timeout, fut).await {
+                Ok(resp) => {
+                    result = Some(resp?);
+                    break;
+                }
+                Err(_) => {
+                    warn!(
+                        "Remote call timed out ({:.3} seconds)",
+                        $self.timeout.as_secs_f64(),
+                    );
+
+                    // Attempt to reconnect
+                    if let Err(error) = $self.reconnect().await {
+                        warn!("Failed to reconnect to remote server");
+
+                        return Err(error);
+                    }
+                }
+            }
+        }
+
+        result.ok_or_else(|| {
+            Error::new(ErrorKind::TimedOut, "Remote server not responding in time")
+        })?
+    }};
+}
 
 #[derive(Debug)]
 pub struct Client {
@@ -53,7 +88,6 @@ impl Client {
         })
     }
 
-    /// Replace the current client to manage disconnection issues.
     async fn reconnect(&mut self) -> io::Result<()> {
         debug!("Attempting to reconnect to source...");
         let mut client = Self::new(self.address, self.timeout).await?;
@@ -64,46 +98,12 @@ impl Client {
         Ok(())
     }
 
-    /// Tries to make a remote call, failing if multiple attempts fail.
-    async fn try_await<F, G, T>(&mut self, mut f: G) -> io::Result<T>
-    where
-        F: Future<Output = T>,
-        G: FnMut() -> F,
-    {
-        use io::{Error, ErrorKind};
-
-        for _ in 0..5 {
-            let fut = f();
-
-            match timeout(self.timeout, fut).await {
-                Ok(result) => return Ok(result),
-                Err(_) => {
-                    warn!(
-                        "Remote call timed out ({:.3} seconds)",
-                        self.timeout.as_secs_f64(),
-                    );
-
-                    // Attempt to reconnect
-                    if let Err(error) = self.reconnect().await {
-                        warn!("Failed to reconnect to remote server");
-
-                        return Err(error);
-                    }
-                }
-            }
-        }
-
-        Err(Error::new(
-            ErrorKind::TimedOut,
-            "Remote server not responding in time",
-        ))
-    }
-
     // Misc
     pub async fn protocol(&mut self) -> io::Result<String> {
         info!("Method: protocol");
 
-        let version = self.client.protocol(context::current()).await?;
+        #[allow(unused_parens)]
+        let version = retry!(self, (self.client.protocol(context::current())));
 
         if PROTOCOL_VERSION != version {
             warn!(
