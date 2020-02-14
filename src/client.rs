@@ -32,7 +32,17 @@ use tarpc::serde_transport::tcp;
 use tokio::time::timeout;
 use tokio_serde::formats::Json;
 
+macro_rules! ctx {
+    () => {
+        context::current()
+    };
+}
+
 macro_rules! retry {
+    ($self:expr, $new_future:expr,) => {
+        retry!($self, $new_future);
+    };
+
     ($self:expr, $new_future:expr) => {{
         use io::{Error, ErrorKind};
 
@@ -62,9 +72,8 @@ macro_rules! retry {
             }
         }
 
-        result.ok_or_else(|| {
-            Error::new(ErrorKind::TimedOut, "Remote server not responding in time")
-        })
+        result
+            .ok_or_else(|| Error::new(ErrorKind::TimedOut, "Remote server not responding in time"))
     }};
 }
 
@@ -117,7 +126,7 @@ impl Client {
     pub async fn ping(&mut self) -> io::Result<()> {
         info!("Method: ping");
 
-        retry!(self, self.client.ping(context::current()))?;
+        retry!(self, self.client.ping(ctx!()))?;
 
         Ok(())
     }
@@ -125,22 +134,24 @@ impl Client {
     pub async fn time(&mut self) -> io::Result<f64> {
         info!("Method: time");
 
-        retry!(self, self.client.time(context::current()))
+        retry!(self, self.client.time(ctx!()))
     }
 
     // Core
     pub async fn prefilter<I: Into<String>>(&mut self, input: I) -> io::Result<Result<String>> {
         info!("Method: prefilter");
 
-        self.client
-            .prefilter(context::current(), input.into())
-            .await
+        let input = input.into();
+
+        retry!(self, self.client.prefilter(ctx!(), input.clone()))
     }
 
     pub async fn parse<I: Into<String>>(&mut self, input: I) -> io::Result<Result<Value>> {
         info!("Method: parse");
 
-        self.client.parse(context::current(), input.into()).await
+        let input = input.into();
+
+        retry!(self, self.client.parse(ctx!(), input.clone()))
     }
 
     pub async fn render<I: Into<String>>(
@@ -150,8 +161,11 @@ impl Client {
     ) -> io::Result<Result<HtmlOutput>> {
         info!("Method: render");
 
-        self.client
-            .render(context::current(), page_info, input.into())
-            .await
+        let input = input.into();
+
+        retry!(
+            self,
+            self.client.render(ctx!(), page_info.clone(), input.clone()),
+        )
     }
 }
