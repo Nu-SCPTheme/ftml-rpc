@@ -64,7 +64,7 @@ macro_rules! retry {
 
         result.ok_or_else(|| {
             Error::new(ErrorKind::TimedOut, "Remote server not responding in time")
-        })?
+        })
     }};
 }
 
@@ -102,7 +102,7 @@ impl Client {
     pub async fn protocol(&mut self) -> io::Result<String> {
         info!("Method: protocol");
 
-        let version = retry!(self, self.client.protocol(context::current()));
+        let version = retry!(self, self.client.protocol(context::current()))?;
 
         if PROTOCOL_VERSION != version {
             warn!(
@@ -117,7 +117,7 @@ impl Client {
     pub async fn ping(&mut self) -> io::Result<()> {
         info!("Method: ping");
 
-        retry!(self, self.client.ping(context::current()));
+        retry!(self, self.client.ping(context::current()))?;
 
         Ok(())
     }
@@ -125,7 +125,7 @@ impl Client {
     pub async fn time(&mut self) -> io::Result<f64> {
         info!("Method: time");
 
-        self.client.time(context::current()).await
+        retry!(self, self.client.time(context::current()))
     }
 
     // Core
