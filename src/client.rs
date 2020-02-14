@@ -22,26 +22,62 @@ use crate::api::{FtmlClient, PROTOCOL_VERSION};
 use crate::Result;
 use ftml::html::HtmlOutput;
 use ftml::PageInfoOwned;
+use futures::prelude::*;
 use serde_json::Value;
-use std::io;
 use std::net::SocketAddr;
+use std::time::Duration;
+use std::{io, mem};
 use tarpc::rpc::client::Config as RpcConfig;
 use tarpc::rpc::context;
 use tarpc::serde_transport::tcp;
+use tokio::time::timeout;
 use tokio_serde::formats::Json;
 
 #[derive(Debug)]
 pub struct Client {
     client: FtmlClient,
+    address: SocketAddr,
+    timeout: Duration,
 }
 
 impl Client {
-    pub async fn new(address: SocketAddr) -> io::Result<Self> {
+    pub async fn new(address: SocketAddr, timeout: Duration) -> io::Result<Self> {
         let transport = tcp::connect(&address, Json::default()).await?;
         let config = RpcConfig::default();
         let client = FtmlClient::new(config, transport).spawn()?;
 
-        Ok(Client { client })
+        Ok(Client {
+            client,
+            address,
+            timeout,
+        })
+    }
+
+    async fn reconnect(&mut self) -> io::Result<()> {
+        debug!("Attempting to reconnect to source...");
+        let mut client = Self::new(self.address, self.timeout).await?;
+
+        debug!("Successfully reconnected");
+        mem::swap(self, &mut client);
+
+        Ok(())
+    }
+
+    async fn wait<F, T>(&mut self, f: F) -> io::Result<T>
+        where F: Future<Output = T>,
+    {
+        use io::{Error, ErrorKind};
+
+        match timeout(self.timeout, f).await {
+            Ok(result) => Ok(result),
+            Err(error) => {
+                warn!("Remote call timed out");
+
+                self.reconnect().await?;
+
+                Err(Error::new(ErrorKind::BrokenPipe, error))
+            }
+        }
     }
 
     // Misc
