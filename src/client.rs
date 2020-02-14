@@ -53,6 +53,7 @@ impl Client {
         })
     }
 
+    /// Replace the current client to manage disconnection issues.
     async fn reconnect(&mut self) -> io::Result<()> {
         debug!("Attempting to reconnect to source...");
         let mut client = Self::new(self.address, self.timeout).await?;
@@ -63,21 +64,39 @@ impl Client {
         Ok(())
     }
 
-    async fn wait<F, T>(&mut self, f: F) -> io::Result<T>
-        where F: Future<Output = T>,
+    /// Tries to make a remote call, failing if multiple attempts fail.
+    async fn try_await<F, G, T>(&mut self, mut f: G) -> io::Result<T>
+    where
+        F: Future<Output = T>,
+        G: FnMut() -> F,
     {
         use io::{Error, ErrorKind};
 
-        match timeout(self.timeout, f).await {
-            Ok(result) => Ok(result),
-            Err(error) => {
-                warn!("Remote call timed out");
+        for _ in 0..5 {
+            let fut = f();
 
-                self.reconnect().await?;
+            match timeout(self.timeout, fut).await {
+                Ok(result) => return Ok(result),
+                Err(_) => {
+                    warn!(
+                        "Remote call timed out ({:.3} seconds)",
+                        self.timeout.as_secs_f64(),
+                    );
 
-                Err(Error::new(ErrorKind::BrokenPipe, error))
+                    // Attempt to reconnect
+                    if let Err(error) = self.reconnect().await {
+                        warn!("Failed to reconnect to remote server");
+
+                        return Err(error);
+                    }
+                }
             }
         }
+
+        Err(Error::new(
+            ErrorKind::TimedOut,
+            "Remote server not responding in time",
+        ))
     }
 
     // Misc
