@@ -88,6 +88,15 @@ impl Server {
 impl FtmlApi for Server {
     // Misc
 
+    type PingFut = Ready<()>;
+
+    #[inline]
+    fn ping(self, _: Context) -> Self::PingFut {
+        info!("Method: ping");
+
+        future::ready(())
+    }
+
     type ProtocolFut = Ready<String>;
 
     #[inline]
@@ -95,15 +104,6 @@ impl FtmlApi for Server {
         info!("Method: protocol");
 
         future::ready(str!(PROTOCOL_VERSION))
-    }
-
-    type PingFut = Ready<String>;
-
-    #[inline]
-    fn ping(self, _: Context) -> Self::PingFut {
-        info!("Method: ping");
-
-        future::ready(str!("pong!"))
     }
 
     type TimeFut = Ready<f64>;

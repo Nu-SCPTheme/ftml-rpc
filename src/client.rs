@@ -108,6 +108,14 @@ impl Client {
     }
 
     // Misc
+    pub async fn ping(&mut self) -> io::Result<()> {
+        info!("Method: ping");
+
+        retry!(self, self.client.ping(ctx!()))?;
+
+        Ok(())
+    }
+
     pub async fn protocol(&mut self) -> io::Result<String> {
         info!("Method: protocol");
 
@@ -121,14 +129,6 @@ impl Client {
         }
 
         Ok(version)
-    }
-
-    pub async fn ping(&mut self) -> io::Result<()> {
-        info!("Method: ping");
-
-        retry!(self, self.client.ping(ctx!()))?;
-
-        Ok(())
     }
 
     pub async fn time(&mut self) -> io::Result<f64> {

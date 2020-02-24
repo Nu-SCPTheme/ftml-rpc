@@ -28,8 +28,8 @@ pub const PROTOCOL_VERSION: &str = "0";
 #[tarpc::service]
 pub trait Ftml {
     // Misc
+    async fn ping() -> ();
     async fn protocol() -> String;
-    async fn ping() -> String;
     async fn time() -> f64;
 
     // Core
