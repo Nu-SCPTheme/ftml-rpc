@@ -4,9 +4,10 @@ Wants=network-online.target
 After=network.target network-online.target
 
 [Service]
-User=ftml
 Type=simple
-ExecStart=/usr/bin/ftml-server
+User=ftml
+WorkingDirectory=/home/ftml
+ExecStart=/usr/bin/ftml-server config.toml
 Restart=always
 RestartSec=5
 
