@@ -1,5 +1,5 @@
 [Unit]
-Description=RPC server for ftml parsing and rendering
+Description=ftml server exposing an RPC interface
 Wants=network-online.target
 After=network.target network-online.target
 
